@@ -69,6 +69,14 @@ async function main() {
   const codex = new CodexAppServerClient(config);
   const activeControllers = new Map<string, AbortController>();
 
+  bot.use(async (ctx, next) => {
+    const chatId = ctx.chat?.id != null ? String(ctx.chat.id) : "unknown";
+    const updateId = ctx.update.update_id;
+    const text = getText(ctx.message)?.slice(0, 200) ?? "";
+    console.log(`[update] id=${updateId} chat=${chatId} text=${JSON.stringify(text)}`);
+    await next();
+  });
+
   async function ensureThread(chatId: string): Promise<string> {
     const existing = await store.get(chatId);
     if (existing?.threadId) {
@@ -134,13 +142,16 @@ async function main() {
     }
 
     const chatId = String(ctx.chat.id);
+    console.log(`[message] chat=${chatId} received text=${JSON.stringify(messageText)}`);
     if (activeControllers.has(chatId)) {
       await ctx.reply("Previous turn is still running. Send /cancel first if you want to stop it.");
       return;
     }
 
     const threadId = await ensureThread(chatId);
+    console.log(`[message] chat=${chatId} using thread=${threadId}`);
     const placeholder = await ctx.reply("Thinking...");
+    console.log(`[message] chat=${chatId} placeholder=${placeholder.message_id}`);
     const draft = new DraftMessageController(bot, ctx.chat.id, placeholder.message_id, config.editIntervalMs);
     const controller = new AbortController();
     activeControllers.set(chatId, controller);

@@ -43,6 +43,16 @@ function extractTurnId(result: unknown): string | null {
   return asTrimmedString(result.turn_id) ?? asTrimmedString(result.id) ?? null;
 }
 
+function extractErrorMessage(payload: Record<string, unknown>): string | null {
+  const error = isRecord(payload.error) ? payload.error : payload;
+  return (
+    asTrimmedString(error.message) ??
+    asTrimmedString(error.additionalDetails) ??
+    asTrimmedString(error.codexErrorInfo) ??
+    null
+  );
+}
+
 function formatToolStatus(item: Record<string, unknown>): string | null {
   const title =
     asTrimmedString(item.title) ??
@@ -199,6 +209,24 @@ export class CodexAppServerClient {
           : asString(params.status);
         if (status) {
           push({ type: "status", text: status });
+        }
+        return;
+      }
+      if (message.method === "error") {
+        const errorText = extractErrorMessage(params);
+        const willRetry = isRecord(params.error) ? params.error.willRetry === true : false;
+        if (errorText) {
+          if (willRetry) {
+            push({ type: "status", text: errorText });
+            return;
+          }
+          failure = new Error(errorText);
+        } else if (!willRetry) {
+          failure = new Error("Codex turn failed");
+        }
+        if (!willRetry) {
+          done = true;
+          push({ type: "done" });
         }
         return;
       }
@@ -484,7 +512,7 @@ export class CodexAppServerClient {
     if (isRecord(payload.thread)) {
       return asTrimmedString(payload.thread.id);
     }
-    return asTrimmedString(payload.threadId);
+    return asTrimmedString(payload.threadId) ?? asTrimmedString(payload.conversationId);
   }
 
   private extractTurnIdFromPayload(payload: Record<string, unknown>): string | undefined {
