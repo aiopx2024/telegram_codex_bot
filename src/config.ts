@@ -40,9 +40,20 @@ function parseArgs(value: string | undefined): string[] {
   }
   const trimmed = value.trim();
   if (trimmed.startsWith("[")) {
-    const parsed = JSON.parse(trimmed) as unknown;
-    if (Array.isArray(parsed) && parsed.every((entry) => typeof entry === "string")) {
-      return parsed;
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed) && parsed.every((entry) => typeof entry === "string")) {
+        return parsed;
+      }
+    } catch {
+      const normalized = trimmed
+        .replace(/^\[/, "")
+        .replace(/\]$/, "")
+        .replace(/[",]/g, " ")
+        .trim();
+      if (normalized) {
+        return normalized.split(/\s+/).filter(Boolean);
+      }
     }
   }
   return trimmed.split(/\s+/).filter(Boolean);

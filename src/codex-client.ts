@@ -295,6 +295,14 @@ export class CodexAppServerClient {
     timeoutMs = this.config.requestTimeoutMs,
   ): Promise<unknown> {
     await this.ensureStarted();
+    return await this.requestStarted(method, params, timeoutMs);
+  }
+
+  private async requestStarted(
+    method: string,
+    params?: Record<string, unknown>,
+    timeoutMs = this.config.requestTimeoutMs,
+  ): Promise<unknown> {
     const child = this.child;
     if (!child) {
       throw new Error("codex app-server is not running");
@@ -353,7 +361,7 @@ export class CodexAppServerClient {
       this.failPending(new Error(message));
     });
 
-    await this.request("initialize", {
+    await this.requestStarted("initialize", {
       clientInfo: {
         name: "telegram-codex-bot",
         title: "Telegram Codex Bot",
@@ -364,12 +372,16 @@ export class CodexAppServerClient {
         optOutNotificationMethods: [],
       },
     }, this.config.startupTimeoutMs);
-    await this.notify("initialized", {});
+    this.notifyStarted("initialized", {});
     this.initialized = true;
   }
 
   private async notify(method: string, params?: Record<string, unknown>): Promise<void> {
     await this.ensureStarted();
+    this.notifyStarted(method, params);
+  }
+
+  private notifyStarted(method: string, params?: Record<string, unknown>): void {
     const child = this.child;
     if (!child) {
       throw new Error("codex app-server is not running");
