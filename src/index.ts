@@ -199,7 +199,6 @@ async function main() {
     }
   });
 
-  await codex.ensureStarted();
   await bot.start({
     onStart: (botInfo) => {
       console.log(`telegram-codex-bot ready as @${botInfo.username}`);
